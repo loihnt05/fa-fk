@@ -1,43 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
-from .. import schemas, models
+from .. import schemas
 from ..database import get_db
-from ..hashing import Hash
+from ..repositories import user as user_repo
 
-router = APIRouter()
+router = APIRouter(
+    tags=["Users"], 
+    prefix="/user"
+)
 
-@router.post('/user', response_model=schemas.ShowUser, tags=["Users"])
+@router.post('/', response_model=schemas.ShowUser)
 def create_user(request: schemas.User, db: Session = Depends(get_db)):
-    new_user = models.User(name=request.name, email=request.email, password=Hash.bcrypt_hash(request.password))
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-@router.get('/user/{id}', response_model=schemas.ShowUser, tags=["Users"])
+    return user_repo.create_user(request, db)
+    
+@router.get('/{id}', response_model=schemas.ShowUser)
 def get_user(id: int, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == id).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with the id {id} is not available")
-    return user
-@router.get('/users', response_model=List[schemas.ShowUser], tags=["Users"])
-def get_all_users(db: Session = Depends(get_db)):
-    users = db.query(models.User).all()
-    return users
+    return user_repo.get_user(id, db)
 
-@router.delete('/user/{id}', status_code=status.HTTP_204_NO_CONTENT, tags=["Users"])
+@router.get('/all', response_model=List[schemas.ShowUser])
+def get_all_users(db: Session = Depends(get_db)):
+    return user_repo.get_all_users(db)
+
+@router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(id: int, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == id)
-    if not user.first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with the id {id} is not available")
-    user.delete(synchronize_session=False)
-    db.commit()
-    return {"detail": "User deleted"}
-@router.put('/user/{id}', status_code=status.HTTP_202_ACCEPTED, tags=["Users"])
+    return user_repo.delete_user(id, db)
+        
+@router.put('/{id}', status_code=status.HTTP_202_ACCEPTED)
 def update_user(id: int, request: schemas.User, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.id == id)
-    if not user.first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User with the id {id} is not available")
-    user.update({'name': request.name, 'email': request.email, 'password': Hash.bcrypt_hash(request.password)})
-    db.commit()
-    return 'updated'
+    return user_repo.update_user(id, request, db)
+   

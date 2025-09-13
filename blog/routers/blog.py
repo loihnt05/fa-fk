@@ -1,45 +1,30 @@
 from typing import List
-from .. import schemas, models, database
-from fastapi import APIRouter, Depends, HTTPException, status
+from .. import schemas, database
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from ..repositories import blog as repository_blog
 
+router = APIRouter(
+    tags=["Blogs"],
+    prefix="/blog"
+)
 
-router = APIRouter()
-
-@router.get("/blog/{id}", status_code=status.HTTP_200_OK, response_model=schemas.ShowBlog, tags=["Blogs"])
+@router.get("/{id}", status_code=status.HTTP_200_OK, response_model=schemas.ShowBlog)
 def read(id: int, db: Session = Depends(database.get_db)):
-    blog = db.query(models.Blog).filter(models.Blog.id == id).first()
-    if not blog:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Blog with the id {id} is not available")
-    return blog
+    return repository_blog.get_blog(id, db)
 
-@router.get("/blogs", response_model=List[schemas.ShowBlog], tags=["Blogs"])
+@router.get("/all", response_model=List[schemas.ShowBlog])
 def read_all(db: Session = Depends(database.get_db)):
-    blogs = db.query(models.Blog).all()
-    return blogs
+    return repository_blog.get_all_blogs(db)
 
-@router.post("/blog", tags=["Blogs"], status_code=status.HTTP_201_CREATED, response_model=schemas.ShowBlog)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.ShowBlog)
 def create(blog: schemas.Blog, db: Session = Depends(database.get_db)):
-    new_blog = models.Blog(title=blog.title, body=blog.body)    
-    db.add(new_blog)
-    db.commit()
-    db.refresh(new_blog)
-    return new_blog
+    return repository_blog.create_blog(blog, db)
 
-@router.delete("/blog/{id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Blogs"])
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def destroy(id: int, db: Session = Depends(database.get_db)):
-    blog = db.query(models.Blog).filter(models.Blog.id == id)
-    if not blog.first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Blog with the id {id} is not available")
-    blog.delete(synchronize_session=False)
-    db.commit()
-    return {"detail": "Blog deleted"}
+    return repository_blog.delete_blog(id, db)
 
-@router.put("/blog/{id}", status_code=status.HTTP_202_ACCEPTED, tags=["Blogs"])
+@router.put("/{id}", status_code=status.HTTP_202_ACCEPTED)
 def update(id: int, request: schemas.Blog, db: Session = Depends(database.get_db)):
-    blog = db.query(models.Blog).filter(models.Blog.id == id)
-    if not blog.first():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Blog with the id {id} is not available")
-    blog.update({'title': request.title, 'body': request.body})
-    db.commit()
-    return 'updated'
+    return repository_blog.update_blog(id, request, db)

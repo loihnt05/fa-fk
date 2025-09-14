@@ -14,13 +14,13 @@ router = APIRouter(
 def create_user(request: schemas.User, db: Session = Depends(get_db)):
     return user_repo.create_user(request, db)
     
-@router.get('/{id}', response_model=schemas.ShowUser)
-def get_user(id: int, db: Session = Depends(get_db)):
-    return user_repo.get_user(id, db)
-
 @router.get('/all', response_model=List[schemas.ShowUser])
 def get_all_users(db: Session = Depends(get_db)):
     return user_repo.get_all_users(db)
+
+@router.get('/{id}', response_model=schemas.ShowUser)
+def get_user(id: int, db: Session = Depends(get_db)):
+    return user_repo.get_user(id, db)
 
 @router.delete('/{id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(id: int, db: Session = Depends(get_db)):
